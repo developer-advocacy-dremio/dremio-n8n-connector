@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es2019",
+        "noImplicitAny": true,
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "outDir": "./dist",
+        "baseUrl": ".",
+        "paths": {
+            "*": [
+                "node_modules/*"
+            ]
+        },
+        "lib": [
+            "es2019",
+            "dom"
+        ]
+    },
+    "include": [
+        "nodes/**/*",
+        "credentials/**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
