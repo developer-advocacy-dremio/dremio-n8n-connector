@@ -86,6 +86,24 @@ The connector uses the Dremio REST API to submit and monitor jobs:
 2.  **Polling**: It receives a Job ID and polls the Job Status endpoint until the state is `COMPLETED`.
 3.  **Retrieval**: Once completed, it fetches the results from the `/results` endpoint and returns them as JSON items.
 
+## File Structure Overview
+
+Understanding the repository layout:
+
+| Path | Description |
+| :--- | :--- |
+| **`package.json`** | Project configuration, dependencies, and build scripts (`npm run build`). |
+| **`nodes/`** | Contains the source code for the n8n node. |
+| `nodes/Dremio/Dremio.node.ts` | **Main Logic**: Defines the node properties and the `execute` function that runs queries. |
+| **`credentials/`** | Contains authentication definitions. |
+| `credentials/DremioApi.credentials.ts` | **Auth Logic**: Defines inputs for Cloud/Software modes, Tokens, and Project IDs. |
+| **`scripts/`** | Helper scripts. |
+| `scripts/verify_api.js` | A standalone Node.js script to test connectivity to Dremio explicitly, outside of n8n. |
+
+## Developer Guide
+
+For a deep dive into how the code works, including the specific API calls and authentication flow, please read the **[Developer Guide](DEVELOPMENT.md)**.
+
 ## Troubleshooting
 
 -   **Job Failed**: If the node errors with "Job Failed", check the Dremio UI Jobs page for detailed error messages regarding your SQL syntax.
