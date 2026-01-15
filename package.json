@@ -1,12 +1,12 @@
 {
     "name": "n8n-nodes-dremio",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "n8n node for Dremio",
     "keywords": [
         "n8n-community-node-package"
     ],
     "license": "MIT",
-    "homepage": "https://github.com/alexmerced/dremio-n8n",
+    "homepage": "https://github.com/developer-advocacy-dremio/dremio-n8n-connector",
     "author": {
         "name": "Alex Merced",
         "email": "alex.merced@dremio.com"
