@@ -81,6 +81,7 @@ export class DremioApi implements ICredentialType {
         request: {
             baseURL: '={{$credentials.baseUrl}}',
             url: '={{$credentials.type === "software" ? "/catalog" : "/v0/projects/" + $credentials.projectId + "/catalog"}}',
+            method: 'GET',
             ignoreHttpStatusErrors: true,
         },
     };
