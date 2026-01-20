@@ -4,6 +4,7 @@ import {
     INodeExecutionData,
     INodeType,
     INodeTypeDescription,
+    sleep,
 } from 'n8n-workflow';
 
 
@@ -132,9 +133,9 @@ export class Dremio implements INodeType {
 
                     const submitBody = { sql };
                     // Use this.helpers.request
-                    const submitRes = await this.helpers.request({
+                    const submitRes = await this.helpers.httpRequest({
                         method: 'POST',
-                        uri: finalSubmitUrl,
+                        url: finalSubmitUrl,
                         body: submitBody,
                         ...requestOptions,
                     });
@@ -147,7 +148,7 @@ export class Dremio implements INodeType {
 
                     // Basic polling loop with sleep
                     while (['RUNNING', 'ENQUEUED', 'STARTING', 'ENGINE_START', 'QUEUED', 'PLANNING'].includes(jobState)) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        await sleep(1000);
 
                         if (type === 'software') {
                             jobUrl = `${cleanBaseUrl}/job/${jobId}`;
@@ -159,9 +160,9 @@ export class Dremio implements INodeType {
                             }
                         }
 
-                        const jobRes = await this.helpers.request({
+                        const jobRes = await this.helpers.httpRequest({
                             method: 'GET',
-                            uri: jobUrl,
+                            url: jobUrl,
                             ...requestOptions,
                         });
                         jobState = jobRes.jobState;
@@ -183,9 +184,9 @@ export class Dremio implements INodeType {
                         }
                     }
 
-                    const resultsRes = await this.helpers.request({
+                    const resultsRes = await this.helpers.httpRequest({
                         method: 'GET',
-                        uri: resultsUrl,
+                        url: resultsUrl,
                         ...requestOptions,
                     });
 
