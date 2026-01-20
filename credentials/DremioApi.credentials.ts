@@ -1,4 +1,5 @@
 import {
+    ICredentialTestRequest,
     ICredentialType,
     INodeProperties,
 } from 'n8n-workflow';
@@ -63,4 +64,24 @@ export class DremioApi implements ICredentialType {
             description: 'Whether to ignore SSL certificate validation (useful for self-signed certs)',
         },
     ];
+
+    authenticate = {
+        type: 'generic' as 'generic',
+        properties: {
+            headers: {
+                'Authorization': '={{"Bearer " + $credentials.token}}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            rejectUnauthorized: '={{!$credentials.ignoreSsl}}'
+        },
+    };
+
+    test: ICredentialTestRequest = {
+        request: {
+            baseURL: '={{$credentials.baseUrl}}',
+            url: '={{$credentials.type === "software" ? "/catalog" : "/v0/projects/" + $credentials.projectId + "/catalog"}}',
+            ignoreHttpStatusErrors: true,
+        },
+    };
 }
