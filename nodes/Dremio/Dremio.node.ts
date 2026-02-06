@@ -6,9 +6,8 @@ import {
     INodeTypeDescription,
     NodeApiError,
     NodeOperationError,
+    sleep,
 } from 'n8n-workflow';
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 
 
