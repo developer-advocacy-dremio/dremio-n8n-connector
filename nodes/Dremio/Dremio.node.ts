@@ -4,7 +4,6 @@ import {
     INodeExecutionData,
     INodeType,
     INodeTypeDescription,
-    NodeApiError,
     NodeOperationError,
     sleep,
 } from 'n8n-workflow';
@@ -109,7 +108,7 @@ export class Dremio implements INodeType {
                 'Accept': 'application/json',
             },
             json: true,
-            rejectUnauthorized: !ignoreSsl,
+            allowUnauthorizedCerts: ignoreSsl,
         };
 
         // Process each item

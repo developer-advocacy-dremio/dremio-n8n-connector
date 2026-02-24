@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-dremio",
-    "version": "2.0.9",
+    "version": "2.0.10",
     "description": "n8n node for Dremio",
     "keywords": [
         "n8n-community-node-package"
