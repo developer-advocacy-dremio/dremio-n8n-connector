@@ -66,23 +66,22 @@ export class DremioApi implements ICredentialType {
     ];
 
     authenticate = {
-        type: 'generic' as 'generic',
+        type: 'generic',
         properties: {
             headers: {
                 'Authorization': '={{"Bearer " + $credentials.token}}',
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
             },
-            rejectUnauthorized: '={{!$credentials.ignoreSsl}}'
+            skipSslCertificateValidation: '={{$credentials.ignoreSsl}}',
         },
-    };
+    } as const;
 
     test: ICredentialTestRequest = {
         request: {
             baseURL: '={{$credentials.baseUrl}}',
             url: '={{$credentials.type === "software" ? "/catalog" : "/v0/projects/" + $credentials.projectId + "/catalog"}}',
             method: 'GET',
-            ignoreHttpStatusErrors: true,
         },
     };
 }

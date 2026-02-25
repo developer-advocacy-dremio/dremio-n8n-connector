@@ -96,17 +96,11 @@ export class Dremio implements INodeType {
         const credentials = await this.getCredentials('dremioApi');
 
         const baseUrl = credentials.baseUrl as string;
-        const token = credentials.token as string;
         const type = credentials.type as string;
         const projectId = credentials.projectId as string;
         const ignoreSsl = credentials.ignoreSsl as boolean;
 
         const requestOptions = {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
             json: true,
             allowUnauthorizedCerts: ignoreSsl,
         };
@@ -118,7 +112,7 @@ export class Dremio implements INodeType {
                     const sql = this.getNodeParameter('sql', i) as string;
 
                     // 1. Submit Query
-                    let cleanBaseUrl = baseUrl.replace(/\/$/, '');
+                    const cleanBaseUrl = baseUrl.replace(/\/$/, '');
                     let finalSubmitUrl: string;
 
                     if (type === 'software') {
@@ -133,8 +127,8 @@ export class Dremio implements INodeType {
                     }
 
                     const submitBody = { sql };
-                    // Use this.helpers.request
-                    const submitRes = await this.helpers.httpRequest({
+                    // Use this.helpers.httpRequestWithAuthentication
+                    const submitRes = await this.helpers.httpRequestWithAuthentication.call(this, 'dremioApi', {
                         method: 'POST',
                         url: finalSubmitUrl,
                         body: submitBody,
@@ -161,7 +155,7 @@ export class Dremio implements INodeType {
                             }
                         }
 
-                        const jobRes = await this.helpers.httpRequest({
+                        const jobRes = await this.helpers.httpRequestWithAuthentication.call(this, 'dremioApi', {
                             method: 'GET',
                             url: jobUrl,
                             ...requestOptions,
@@ -170,7 +164,7 @@ export class Dremio implements INodeType {
                     }
 
                     if (jobState !== 'COMPLETED') {
-                        throw new Error(`Job failed with state: ${jobState}`);
+                        throw new NodeOperationError(this.getNode(), `Job failed with state: ${jobState}`);
                     }
 
                     // 3. Fetch Results
@@ -185,7 +179,7 @@ export class Dremio implements INodeType {
                         }
                     }
 
-                    const resultsRes = await this.helpers.httpRequest({
+                    const resultsRes = await this.helpers.httpRequestWithAuthentication.call(this, 'dremioApi', {
                         method: 'GET',
                         url: resultsUrl,
                         ...requestOptions,
