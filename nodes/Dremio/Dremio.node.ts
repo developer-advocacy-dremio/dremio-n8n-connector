@@ -90,7 +90,7 @@ export class Dremio implements INodeType {
 
     async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
         const items = this.getInputData();
-        const returnData: IDataObject[] = [];
+        const returnData: INodeExecutionData[] = [];
         const resource = this.getNodeParameter('resource', 0) as string;
         const operation = this.getNodeParameter('operation', 0) as string;
         const credentials = await this.getCredentials('dremioApi');
@@ -217,6 +217,6 @@ export class Dremio implements INodeType {
             }
         }
 
-        return [this.helpers.returnJsonArray(returnData)];
+        return [returnData];
     }
 }
