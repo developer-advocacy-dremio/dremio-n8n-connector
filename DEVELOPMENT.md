@@ -1,59 +1,91 @@
 # Developer Guide
 
-This document provides a detailed explanation of the internal logic for the Dremio n8n Connector. It is intended for developers who want to understand, modify, or extend the connector's functionality.
+This document explains the internal architecture of the Dremio n8n Connector for developers who want to understand, modify, or extend the code.
 
-## 1. Authentication Logic (`credentials/DremioApi.credentials.ts`)
+## Authentication (`credentials/DremioApi.credentials.ts`)
 
-The authentication is handled by the `DremioApi` class, which implements the `ICredentialType` interface.
+The `DremioApi` class implements `ICredentialType` and defines:
 
-### Properties
-The credential defines the following fields that the user configures in n8n:
+### Credential Fields
+| Field | Type | Description |
+|:---|:---|:---|
+| `type` | Options (`cloud` / `software`) | Deployment mode selector |
+| `baseUrl` | String | API endpoint (default: `https://api.dremio.cloud`) |
+| `projectId` | String | Dremio Cloud Project ID (hidden for Software) |
+| `token` | String (password) | Personal Access Token (PAT) |
+| `ignoreSsl` | Boolean | Skip SSL validation for self-signed certs |
 
-*   **`type`**: A selector to switch between **Cloud** and **Software** modes.
-*   **`baseUrl`**: The API endpoint.
-    *   *Default*: `https://api.dremio.cloud`
-    *   *Software Example*: `http://dremio.example.com:9047/api/v3`
-*   **`projectId`**: The Dremio Project ID.
-    *   *Display Condition*: Only visible when `type` is set to `cloud`.
-*   **`token`**: The Personal Access Token (PAT) used for Bearer authentication.
-*   **`ignoreSsl`**: A boolean flag to bypass SSL verification, useful for self-hosted instances with self-signed certificates.
+### Authentication Method
+Uses n8n's built-in `generic` authentication type (`authenticate` block with `as const`), which automatically injects:
+- `Authorization: Bearer <token>` header
+- `Content-Type` and `Accept` JSON headers
+- `skipSslCertificateValidation` based on `ignoreSsl`
 
-## 2. Node Execution Logic (`nodes/Dremio/Dremio.node.ts`)
+This is consumed by `httpRequestWithAuthentication` in the node — **no manual header construction needed**.
 
-The core logic resides in the `Dremio` class, implementing `INodeType`.
+### Credential Test
+The `test` property defines an `ICredentialTestRequest` that hits the Dremio catalog endpoint:
+- **Cloud**: `GET {baseUrl}/v0/projects/{projectId}/catalog`
+- **Software**: `GET {baseUrl}/catalog`
 
-### Node Properties (UI)
-The node exposes the following inputs to the user:
-*   **Resource**: Currently supports `Query`.
-*   **Operation**: Currently supports `Execute`.
-*   **SQL Query**: A text area for the user to input their SQL statement.
+HTTP errors (401, 403, etc.) are **not** suppressed — a failing credential returns an error to the user.
 
-### Execution Flow (`execute` method)
-When the node runs, the `execute` method performs the following steps for each input item:
+## Node Execution (`nodes/Dremio/Dremio.node.ts`)
 
-1.  **Preparation**:
-    *   Retrieves values for `resource`, `operation`, and `sql`.
-    *   Fetches the `dremioApi` credentials (URL, Token, Project ID, SSL settings).
-    *   Configures an `https.Agent` to handle the `ignoreSsl` setting.
+The `Dremio` class implements `INodeType` with a single resource (`Query`) and operation (`Execute`).
 
-2.  **API URL Construction**:
-    The code dynamically builds the Dremio REST API endpoints based on the `type` (Cloud vs. Software) and `baseUrl`.
-    *   **Software**: Uses the pattern `{baseUrl}/sql`, `{baseUrl}/job/{id}`, etc.
-    *   **Cloud**: Uses the pattern `{baseUrl}/v0/projects/{projectId}/sql`. It intelligently handles cases where the user might or might not have included `/v0` in the base URL.
+### Execution Flow
 
-3.  **Job Submission (Async)**:
-    *   Sends a `POST` request to the SQL endpoint with the user's query.
-    *   Dremio returns a **Job ID** immediately, while the query runs asynchronously.
+```
+┌─────────────┐     ┌──────────┐     ┌───────────────┐
+│ Submit Query │────▶│ Poll Job │────▶│ Fetch Results │
+│  POST /sql   │     │ GET /job/ │     │ GET /results  │
+└─────────────┘     └──────────┘     └───────────────┘
+```
 
-4.  **Job Polling**:
-    *   The node enters a `while` loop, checking the Job Status endpoint (`/job/{id}`) every second.
-    *   It waits while the job state is `RUNNING`, `ENQUEUED`, `PLANNING`, etc.
-    *   The loop exits when the job is `COMPLETED`, `FAILED`, or `CANCELED`.
+1. **Submit** — `POST` to `/sql` with the SQL query body. Returns a Job ID.
+2. **Poll** — Loops every 1 second (using n8n's `sleep`) while job state is `RUNNING`, `ENQUEUED`, `STARTING`, `ENGINE_START`, `QUEUED`, or `PLANNING`.
+3. **Fetch** — On `COMPLETED`, fetches results from `/job/{id}/results`.
 
-5.  **Result Retrieval**:
-    *   If the job completes successfully, the node sends a `GET` request to the Results endpoint (`/job/{id}/results`).
-    *   The returned JSON rows are mapped to n8n's data format and output for the next node in the workflow.
+### URL Construction
+URLs are built dynamically based on deployment type:
+- **Software**: `{baseUrl}/sql`, `{baseUrl}/job/{id}`, `{baseUrl}/job/{id}/results`
+- **Cloud**: `{baseUrl}/v0/projects/{projectId}/sql` (auto-detects if `/v0` is already in the base URL)
+
+### HTTP Requests
+All API calls use `this.helpers.httpRequestWithAuthentication.call(this, 'dremioApi', options)`, which:
+- Injects auth headers from the credential `authenticate` block
+- Handles SSL settings
+- Returns parsed JSON
+
+### Data Lineage (`pairedItem`)
+Each output item is typed as `INodeExecutionData` (not `IDataObject`) and includes `pairedItem: { item: i }` linking each result row back to its input item. The return statement uses `return [returnData]` directly — **not** `returnJsonArray` (which would strip `pairedItem`).
 
 ### Error Handling
-*   If `Continue On Fail` is enabled in the node settings, errors are caught and output as a JSON object `{ error: message }`.
-*   Otherwise, errors throw an exception and stop the workflow.
+- **`NodeOperationError`** — Used for job failures (`Job failed with state: FAILED`)
+- **`continueOnFail()`** — If enabled, errors are caught and returned as `{ error: message }` with `pairedItem` preserved
+- **Re-throw check** — Errors already wrapped by n8n (with `error.node`) are re-thrown as-is to avoid double-wrapping
+
+## Build Tooling
+
+| Command | Description |
+|:---|:---|
+| `npm run build` | `tsc` + `copyfiles` (copies SVG icons to `dist/`) |
+| `npm run lint` | ESLint with `@typescript-eslint` |
+| `npm run dev` | TypeScript watch mode |
+
+### CI/CD
+Publishing is automated via `.github/workflows/publish.yml`:
+- Triggered on GitHub Release (`published`)
+- Runs `npm ci` → `build` → `lint` → `npm publish --provenance`
+- Uses `NPM_TOKEN` secret for authentication
+- Generates npm provenance statements signed by GitHub Actions OIDC
+
+## Local API Testing
+
+```bash
+cp .env.template .env   # Fill in credentials
+node scripts/verify_api.js
+```
+
+The script exercises the same Submit → Poll → Fetch flow as the node, using native `fetch` against the Dremio REST API.
