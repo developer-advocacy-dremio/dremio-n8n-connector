@@ -1,6 +1,6 @@
 {
     "name": "n8n-nodes-dremio",
-    "version": "2.0.16",
+    "version": "2.0.17",
     "description": "n8n node for Dremio",
     "keywords": [
         "n8n-community-node-package"
@@ -17,7 +17,7 @@
     },
     "main": "index.js",
     "scripts": {
-        "build": "tsc && copyfiles -u 1 \"nodes/**/*.svg\" dist/",
+        "build": "tsc && copyfiles -u 0 \"nodes/**/*.svg\" dist/",
         "dev": "tsc --watch",
         "test": "jest",
         "lint": "eslint nodes/ credentials/ --ext .ts",
